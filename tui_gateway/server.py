@@ -4542,11 +4542,23 @@ def _(rid, params: dict) -> dict:
             return _err(rid, 4018, "no previous user message to retry")
         content = history[last_user_idx].get("content", "")
         if isinstance(content, list):
-            content = " ".join(
-                p.get("text", "")
-                for p in content
-                if isinstance(p, dict) and p.get("type") == "text"
-            )
+            text_parts = []
+            for part in content:
+                if not isinstance(part, dict):
+                    text = _content_display_text(part).strip()
+                    if text:
+                        text_parts.append(text)
+                    continue
+                kind = part.get("type")
+                if kind in {"text", "input_text", "output_text"} or (
+                    not kind and "text" in part
+                ):
+                    text = _content_display_text(part).strip()
+                    if text:
+                        text_parts.append(text)
+            content = "\n".join(text_parts).strip()
+        else:
+            content = _content_display_text(content).strip()
         if not content:
             return _err(rid, 4018, "last user message is empty")
         # Truncate history: remove everything from the last user message onward
